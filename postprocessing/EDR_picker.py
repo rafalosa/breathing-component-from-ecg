@@ -5,6 +5,7 @@ from scipy.integrate import simps
 from typing import Tuple
 import wfdb.io
 import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
 
 
 # todo: Wrap it.
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     respiration = data.p_signal[:,0]
     idxs = ann.sample
 
-    pt_len = 180
+    pt_len = 100
     start = 700
 
     chosen = idxs[start:start + pt_len]
@@ -87,15 +88,24 @@ if __name__ == "__main__":
 
     respiration_chosen_raw = np.array(respiration[chosen])
 
-    fig = plt.figure(figsize=(20, 5))
+    fig = plt.figure(figsize=(16, 10))
 
-    fig.add_subplot(2, 1, 1)
-    plt.plot(respiration_chosen_raw)
+    fig.add_subplot(3, 1, 1)
+    plt.plot(chosen_time, respiration_chosen_raw)
+    plt.title("Simulated EDR candidate")
 
     frac, edr = sort_EDR(np.array([respiration_chosen_raw]), chosen_time, .08, 250)
 
-    fig.add_subplot(2, 1, 2)
-    plt.plot(edr[0])
+    fig.add_subplot(3, 1, 2)
+    plt.plot(np.linspace(chosen_time[0], chosen_time[-1], edr[0].shape[0]), edr[0])
+    plt.title("Interpolated EDR candidate")
+
+    fig.add_subplot(3, 1, 3)
+    respiration_filtered = savgol_filter(respiration[chosen[0]:chosen[-1]], 100, 1)
+    plt.plot(np.linspace(chosen_time[0], chosen_time[-1], respiration_filtered.shape[0]), respiration_filtered)
+    plt.title("Filtered reference")
+    plt.xlabel("Time (s)")
+
     print(frac)
 
     plt.show()
