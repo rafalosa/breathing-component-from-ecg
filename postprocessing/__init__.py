@@ -1,3 +1,3 @@
-from EDR_picker import EDRPicker
+from .EDR_picker import EDRPicker
 
 __all__ = ["EDRPicker"]
