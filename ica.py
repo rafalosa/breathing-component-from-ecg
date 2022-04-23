@@ -35,26 +35,28 @@ ica = FastICA(max_iter=160, tol=.1, random_state=123)
 components = ica.fit_transform(reduced_dim_data.T)
 
 picker = EDRPicker((r_timestamps_cropped[0], r_timestamps_cropped[-1]))
-picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
+picker.set_spline_params(smoothing=0.1, derivative=0, sampling_frequency=SAMPLING_FREQ)
 picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
 fractions, edrs = picker.apply(components.T, r_timestamps_cropped)
 
 fig = plt.figure(figsize=(10, 5))
 
+EDR_IDX = 0
+
 fig.add_subplot(3, 1, 1)
-plt.plot(edrs[0][:(SIGNAL_LENGTH*250)//3]*-1)
+plt.plot(edrs[EDR_IDX][:(SIGNAL_LENGTH*250)//3]*-1)
 
 fig.add_subplot(3, 1, 2)
 plt.plot(savgol_filter(resp_signal_cropped[:(SIGNAL_LENGTH*250)//3], 100, 1))
 
 fig.add_subplot(3, 1, 3)
-domain = picker.power_spectra[0][0]
+domain = picker.power_spectra[EDR_IDX][0]
 cropper1 = np.r_[domain >= 0]
 cropper2 = np.r_[domain <= .6]
 cropper = [a and b for a, b in zip(cropper1, cropper2)]
 cropped_domain = domain[cropper]
-cropped_spectrum = picker.power_spectra[0][1][cropper]
+cropped_spectrum = picker.power_spectra[EDR_IDX][1][cropper]
 plt.plot(cropped_domain, cropped_spectrum)
 
 plt.show()
