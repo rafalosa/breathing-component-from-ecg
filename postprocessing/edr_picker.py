@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import welch
 from scipy.interpolate import splev, splrep
 from scipy.integrate import simps
-from typing import Tuple
+from typing import Tuple, List
 import wfdb.io
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
@@ -10,23 +10,25 @@ from scipy.signal import savgol_filter
 
 class EDRPicker:
 
-    __slots__ = {"spectral_power_window",
-                 "sampling_frequency",
-                 "spline_smoothing",
-                 "spline_derivative",
-                 "time_boundaries",
-                 "samples_per_segment",
-                 "nfft_",
-                 "candidates_raw"}
+    __slots__ = {"_spectral_power_window",
+                 "_sampling_frequency",
+                 "_spline_smoothing",
+                 "_spline_derivative",
+                 "_time_boundaries",
+                 "_samples_per_segment",
+                 "_nfft",
+                 "candidates_raw",
+                 "_power_spectra"}
 
     def __init__(self, time_boundaries: Tuple[float, float]):
-        self.time_boundaries = time_boundaries
-        self.spline_smoothing = 0
-        self.spline_derivative = 0
-        self.sampling_frequency = 100
-        self.spectral_power_window = .1
-        self.samples_per_segment = 2 ** 10
-        self.nfft_ = 2 ** 10
+        self._time_boundaries = time_boundaries
+        self._spline_smoothing = 0
+        self._spline_derivative = 0
+        self._sampling_frequency = 100
+        self._spectral_power_window = .1
+        self._samples_per_segment = 2 ** 10
+        self._nfft = 2 ** 10
+        self._power_spectra: List[Tuple[np.ndarray, np.ndarray]] = []
 
     def set_spline_params(self, smoothing: float = 0, derivative: int = 0, sampling_frequency: float = 100) -> None:
         """
@@ -36,9 +38,9 @@ class EDRPicker:
         :param sampling_frequency: Desired sampling frequency in Hz of the fitted signal.
         :return: None.
         """
-        self.spline_smoothing = smoothing
-        self.spline_derivative = derivative
-        self.sampling_frequency = sampling_frequency
+        self._spline_smoothing = smoothing
+        self._spline_derivative = derivative
+        self._sampling_frequency = sampling_frequency
 
     def set_spectral_params(self, window_width: float = .1, samples_per_segment: int = 2 ** 10,
                             nfft_: int = 2 ** 10) -> None:
@@ -49,9 +51,13 @@ class EDRPicker:
         :param nfft_: Length of the used FFT.
         :return: None.
         """
-        self.spectral_power_window = window_width
-        self.samples_per_segment = samples_per_segment
-        self.nfft_ = nfft_
+        self._spectral_power_window = window_width
+        self._samples_per_segment = samples_per_segment
+        self._nfft = nfft_
+
+    @property
+    def power_spectra(self) -> List[Tuple[np.ndarray, np.ndarray]]:
+        return self._power_spectra
 
     def apply(self, candidates: np.ndarray, timestamps: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -66,19 +72,22 @@ class EDRPicker:
         derived_respiration_signals = []
         fractions = []
 
-        extended_domain = np.arange(self.time_boundaries[0], self.time_boundaries[-1], 1 / self.sampling_frequency)
+        extended_domain = np.arange(self._time_boundaries[0], self._time_boundaries[-1], 1 / self._sampling_frequency)
 
         for edr_row in candidates:
             # Interpolate candidate with cubic spline to restore original sampling frequency and regularity.
             EDR = edr_row.reshape(-1, 1)
-            edr_spline = splrep(timestamps, EDR, s=self.spline_smoothing)
-            interpolated_edr = splev(extended_domain, edr_spline, der=self.spline_derivative)
+            edr_spline = splrep(timestamps, EDR, s=self._spline_smoothing)
+            interpolated_edr = splev(extended_domain, edr_spline, der=self._spline_derivative)
 
             # Transform to frequency domain
-            edr_spectrum_domain, edr_spectrum = welch(interpolated_edr, self.sampling_frequency,
-                                                      nperseg=self.samples_per_segment,
-                                                      nfft=self.nfft_)
-            window_width_index = self.spectral_power_window / self.sampling_frequency * 2 * edr_spectrum.shape[0]
+            edr_spectrum_domain, edr_spectrum = welch(interpolated_edr, self._sampling_frequency,
+                                                      nperseg=self._samples_per_segment,
+                                                      nfft=self._nfft)
+
+            self._power_spectra.append((edr_spectrum_domain, edr_spectrum))
+
+            window_width_index = self._spectral_power_window / self._sampling_frequency * 2 * edr_spectrum.shape[0]
 
             max_index = np.argmax(edr_spectrum)  # Locate global maximum
 
@@ -153,6 +162,10 @@ if __name__ == "__main__":
     plt.title("Filtered reference")
     plt.xlabel("Time (s)")
 
-    print(frac)
+    s = edr_picker.power_spectra
+
+    fig = plt.figure()
+    fig.add_subplot(1, 1, 1)
+    plt.plot(s[0][1])
 
     plt.show()
