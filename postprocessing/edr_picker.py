@@ -29,17 +29,40 @@ class EDRPicker:
         self.nfft_ = 2 ** 10
 
     def set_spline_params(self, smoothing: float = 0, derivative: int = 0, sampling_frequency: float = 100) -> None:
+        """
+        Set spline interpolation/approximation parameters.
+        :param smoothing: Smoothing parameter of the fitted spline.
+        :param derivative: Derivative order of the spline.
+        :param sampling_frequency: Desired sampling frequency in Hz of the fitted signal.
+        :return: None.
+        """
         self.spline_smoothing = smoothing
         self.spline_derivative = derivative
         self.sampling_frequency = sampling_frequency
 
     def set_spectral_params(self, window_width: float = .1, samples_per_segment: int = 2 ** 10,
                             nfft_: int = 2 ** 10) -> None:
+        """
+        Set spectral analysis parameters.
+        :param window_width: Window width in Hz around the global maximum of the spectrum for each EDR candidate.
+        :param samples_per_segment: Data points count for each Welch's method window.
+        :param nfft_: Length of the used FFT.
+        :return: None.
+        """
         self.spectral_power_window = window_width
         self.samples_per_segment = samples_per_segment
         self.nfft_ = nfft_
 
     def apply(self, candidates: np.ndarray, timestamps: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Apply spline interpolation/approximation and spectral analysis to a EDR candidates matrix and return processed
+        results.
+        :param candidates: Matrix of EDR candidates, each candidate occupies an entire row.
+        :param timestamps: Markers in seconds of the extracted R peaks. Used to properly reconstruct the timeline of the
+        EDR signal.
+        :return: Tuple of Interpolated EDR candidates sorted from best to worst and their associated spectral power
+        fractions.
+        """
         derived_respiration_signals = []
         fractions = []
 
