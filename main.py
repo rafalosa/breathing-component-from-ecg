@@ -2,12 +2,15 @@ import wfdb
 from scipy.signal import savgol_filter
 
 from preprocessing import ECGPreprocessor
+from plot import plot_signal
 
 DB_PATH = 'fantasia_wfdb\\f1o01'
 ecg_preprocessor = ECGPreprocessor(DB_PATH)
 fs = ecg_preprocessor.record.fs
 
 wfdb.plot_items(ecg_preprocessor.ecg_signal[:400], fs=fs, time_units='seconds')
+plot_signal(ecg_preprocessor.ecg_signal[:400], fs=fs, labels=('time, s', 'signal'))
+
 ecg_preprocessor.ecg_signal = savgol_filter(ecg_preprocessor.ecg_signal, window_length=7, polyorder=3)
 # wfdb.plot_items(ecg_preprocessor.ecg_signal[:400], fs=fs)
 #
