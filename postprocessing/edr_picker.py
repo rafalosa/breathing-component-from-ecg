@@ -125,8 +125,8 @@ class EDRPicker:
 
 
 if __name__ == "__main__":
-    ann = wfdb.io.rdann("../data/fantasia_wfdb/f1y05", "ecg")
-    data = wfdb.io.rdrecord("../data/fantasia_wfdb/f1y05")
+    ann = wfdb.io.rdann("../fantasia_wfdb/f1y05", "ecg")
+    data = wfdb.io.rdrecord("../fantasia_wfdb/f1y05")
 
     respiration = data.p_signal[:, 0]
     idxs = ann.sample
