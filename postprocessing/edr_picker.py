@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import welch
 from scipy.interpolate import splev, splrep
 from scipy.integrate import simps
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import wfdb.io
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
@@ -28,7 +28,7 @@ class EDRPicker:
         self._spectral_power_window = .1
         self._samples_per_segment = 2 ** 10
         self._nfft = 2 ** 10
-        self._power_spectra: List[Tuple[np.ndarray, np.ndarray]] = []
+        self._power_spectra: Optional[List[Tuple[np.ndarray, np.ndarray]]] = None
 
     def set_spline_params(self, smoothing: float = 0, derivative: int = 0, sampling_frequency: float = 100) -> None:
         """
@@ -57,6 +57,11 @@ class EDRPicker:
 
     @property
     def power_spectra(self) -> List[Tuple[np.ndarray, np.ndarray]]:
+        try:
+            assert self._power_spectra
+        except AssertionError:
+            raise RuntimeError("Perform the spectral analysis using the apply()"
+                               " method before getting the candidates' spectra.")
         return self._power_spectra
 
     def apply(self, candidates: np.ndarray, timestamps: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -71,6 +76,7 @@ class EDRPicker:
         """
         derived_respiration_signals = []
         fractions = []
+        self._power_spectra = []
 
         extended_domain = np.arange(self._time_boundaries[0], self._time_boundaries[-1], 1 / self._sampling_frequency)
 
@@ -115,11 +121,12 @@ class EDRPicker:
             derived_respiration_signals.append(interpolated_edr)
 
         # Sort EDR candidates with ascending order with respect to the fractions
-        zipped_results = zip(fractions, derived_respiration_signals)
+        zipped_results = zip(fractions, derived_respiration_signals, self._power_spectra)
         sorted_results = sorted(zipped_results, reverse=False, key=lambda x: x[0])
 
         sorted_fractions = np.array([el[0] for el in sorted_results])
         sorted_edr = np.array([el[1] for el in sorted_results])
+        self._power_spectra = [el[2] for el in sorted_results]
 
         return sorted_fractions, sorted_edr
 
@@ -146,7 +153,10 @@ if __name__ == "__main__":
     plt.title("Simulated EDR candidate")
 
     edr_picker = EDRPicker((chosen_time[0], chosen_time[-1]))
-
+    try:
+        a = edr_picker.power_spectra
+    except RuntimeError:
+        pass
     edr_picker.set_spectral_params(.08, 2 ** 13, 2 ** 16)
     edr_picker.set_spline_params(0.1, 0, 250)
 
