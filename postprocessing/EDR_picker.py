@@ -45,8 +45,9 @@ class EDRPicker:
 
         extended_domain = np.arange(self.time_boundaries[0], self.time_boundaries[-1], 1 / self.sampling_frequency)
 
-        for EDR in candidates:
+        for edr_row in candidates:
             # Interpolate candidate with cubic spline to restore original sampling frequency and regularity.
+            EDR = edr_row.reshape(-1, 1)
             edr_spline = splrep(timestamps, EDR, s=self.spline_smoothing)
             interpolated_edr = splev(extended_domain, edr_spline, der=self.spline_derivative)
 
@@ -83,7 +84,7 @@ class EDRPicker:
 
         # Sort EDR candidates with ascending order with respect to the fractions
         zipped_results = zip(fractions, derived_respiration_signals)
-        sorted_results = sorted(zipped_results, reverse=False)
+        sorted_results = sorted(zipped_results, reverse=False, key=lambda x: x[0])
 
         sorted_fractions = np.array([el[0] for el in sorted_results])
         sorted_edr = np.array([el[1] for el in sorted_results])
