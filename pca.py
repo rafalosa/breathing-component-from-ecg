@@ -1,55 +1,65 @@
 from sklearn.decomposition import PCA
 from data_processing import ECGPreprocessor, EDRPicker
-from scipy.signal import savgol_filter, coherence, correlate
+from scipy.signal import savgol_filter, welch
+from tools.plot import CollectivePlotter
 import wfdb
 import numpy as np
 import matplotlib.pyplot as plt
 
-SAMPLING_FREQ = 250
-START_IDX = 2251 * SAMPLING_FREQ
-SIGNAL_LEN = 5*SAMPLING_FREQ*60
+START_TIME = 2651  # [s]
+SIGNAL_LENGTH = 300  # [s]
+SAMPLING_FREQ = 250  # [Hz]
+
+start_idx = START_TIME * SAMPLING_FREQ
+end_idx = (START_TIME + SIGNAL_LENGTH) * SAMPLING_FREQ
 
 DB_PATH = 'data\\fantasia_wfdb\\f1o01'
+
 ecg_preprocessor = ECGPreprocessor(DB_PATH)
 ecg_preprocessor.ecg_signal = savgol_filter(ecg_preprocessor.ecg_signal, window_length=7, polyorder=3)
-peaks = ecg_preprocessor.create_qrs_matrix(qrs_time_window=0.12)
-idx = ecg_preprocessor.get_r_peaks_indexes()
-slicer = np.r_[idx > START_IDX, idx < START_IDX + SIGNAL_LEN]
 
-slicer1 = np.r_[idx > START_IDX]
-slicer2 = np.r_[idx < START_IDX + SIGNAL_LEN]
+r_idxs = ecg_preprocessor.get_r_peaks_indexes()
+ecg_signal = ecg_preprocessor.ecg_signal
+qrs_complexes_all = ecg_preprocessor.create_qrs_matrix(qrs_time_window=0.12)
+resp_signal = ecg_preprocessor.respiration_signal
+resp_signal_cropped = resp_signal[start_idx:end_idx]
 
-slicer = np.array([a and b for a, b in zip(slicer1, slicer2)])
 
-idx = idx[slicer]
-peaks = peaks[:,  slicer]
-idx = idx / SAMPLING_FREQ
+slicer_temp1 = np.r_[r_idxs > start_idx]
+slicer_temp2 = np.r_[r_idxs < end_idx]
+slicer = [condA and condB for condA, condB in zip(slicer_temp1, slicer_temp2)]
+
+r_timestamps_cropped = r_idxs[slicer] / 250
+qrs_complexes_cropped = qrs_complexes_all[:, slicer]
 
 pca = PCA()
-pca.fit(peaks)
+pca.fit(qrs_complexes_cropped)
 
 eigen_vectors = pca.components_
 
-picker = EDRPicker((idx[0], idx[-1]))
-picker.set_spectral_params(window_width=.08,  samples_per_segment=2 ** 13, nfft_=2 ** 16)
+picker = EDRPicker((r_timestamps_cropped[0], r_timestamps_cropped[-1]))
 picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
-fractions, edrs = picker.apply(eigen_vectors, idx)
-power_spectra = picker.power_spectra
+picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
-for pair in power_spectra:
-    # plt.plot(pair[0], pair[1])
-    # plt.show()
-    pass
+fractions, edrs = picker.apply(eigen_vectors, r_timestamps_cropped, sort_=True)
+edr_domain = np.arange(r_timestamps_cropped[0], r_timestamps_cropped[-1], 1/SAMPLING_FREQ)
 
+EDR_IDX = 0
 
-resp = ecg_preprocessor.respiration_signal[START_IDX: START_IDX + SIGNAL_LEN]
-# plt.subplot(121)
-# plt.plot(resp[:resp.shape[0]//3])
-# plt.subplot(122)
-# plt.plot(edrs[0][:resp.shape[0]//3])
-# plt.show()
-print(len(resp), len(edrs[0]))
-print(max(correlate(resp, edrs[0])/len(edrs[0])))
-print(coherence(resp, edrs[0], fs=ecg_preprocessor.record.fs, nfft=2**16, nperseg=2**13)[0])
-# wfdb.plot_items(eigen_vectors[20, :])
-# wfdb.plot_items(ecg_preprocessor.respiration_signal)
+domain = picker.power_spectra[EDR_IDX][0]
+
+pl = CollectivePlotter(3, 2)
+edrs = list(edrs)
+spectra = [tup[1] for tup in picker.power_spectra]
+
+pl.set_col_values(0, edrs[:3])
+pl.set_col_values(1, spectra[:3])
+pl.set_col_domain(0, edr_domain)
+pl.set_col_domain(1, domain)
+pl.set_col_boundaries(1, (0, .5))
+pl.set_col_boundaries(0, (START_TIME, START_TIME + 100))
+
+pl.set_col_xlabel(0, "Time (s)")
+pl.set_col_xlabel(1, "Frequency (Hz)")
+# titles = ['PCA1', 'PCA2', 'PCA3']
+pl.show((10, 5))#, titles=titles)

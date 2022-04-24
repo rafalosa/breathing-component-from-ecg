@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, List, Union, Sequence
 import numpy as np
 from functools import wraps
 
@@ -128,7 +128,7 @@ class CollectivePlotter:
 
         self._col_domains[ncol] = domain
 
-    def show(self, figsize_: Tuple[int, int] = (10, 10)) -> None:
+    def show(self, figsize_: Tuple[int, int] = (10, 10), titles: Optional[Sequence[str]] = None) -> None:
         """
         Display the plot with current settings
 
@@ -169,6 +169,8 @@ class CollectivePlotter:
                 values = values[slicer]
 
             ax = fig.add_subplot(self._nrows, self._ncols, i+1)
+            if titles and not i % 2:
+                ax.set_ylabel(titles[i//2])
             if domain is not None:
                 ax.plot(domain, values)
             else:
