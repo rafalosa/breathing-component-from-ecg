@@ -4,8 +4,9 @@ import numpy as np
 from sklearn.decomposition import FastICA, PCA
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
+from plot import CollectivePlotter
 
-START_TIME = 2251  # [s]
+START_TIME = 2651  # [s]
 SIGNAL_LENGTH = 300  # [s]
 SAMPLING_FREQ = 250  # [Hz]
 
@@ -35,10 +36,11 @@ ica = FastICA(max_iter=160, tol=.1, random_state=123)
 components = ica.fit_transform(reduced_dim_data.T)
 
 picker = EDRPicker((r_timestamps_cropped[0], r_timestamps_cropped[-1]))
-picker.set_spline_params(smoothing=0.1, derivative=0, sampling_frequency=SAMPLING_FREQ)
+picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
 picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
 fractions, edrs = picker.apply(components.T, r_timestamps_cropped)
+edr_domain = np.arange(r_timestamps_cropped[0], r_timestamps_cropped[-1], 1/SAMPLING_FREQ)
 
 fig = plt.figure(figsize=(10, 5))
 
@@ -60,6 +62,23 @@ cropped_spectrum = picker.power_spectra[EDR_IDX][1][cropper]
 plt.plot(cropped_domain, cropped_spectrum)
 
 plt.show()
+
+pl = CollectivePlotter(6, 2)
+edrs = [edr for edr in edrs]
+spectra = [tup[1] for tup in picker.power_spectra]
+
+pl.set_col_values(0, edrs)
+pl.set_col_values(1, spectra)
+pl.set_col_domain(0, edr_domain)
+pl.set_col_domain(1, domain)
+pl.set_col_boundaries(1, (0, .5))
+pl.set_col_boundaries(0, (START_TIME, START_TIME + 100))
+
+pl.set_col_xlabel(0, "Time (s)")
+pl.set_col_xlabel(1, "Frequency (Hz)")
+
+pl.show()
+
 
 
 
