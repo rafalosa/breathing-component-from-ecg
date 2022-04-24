@@ -1,10 +1,10 @@
-from preprocessing.ecg_preprocessor import ECGPreprocessor
-from postprocessing.edr_picker import EDRPicker
+from data_processing.ecg_preprocessor import ECGPreprocessor
+from data_processing.edr_picker import EDRPicker
 import numpy as np
 from sklearn.decomposition import FastICA, PCA
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-from plot import CollectivePlotter
+from tools import CollectivePlotter
 
 START_TIME = 2651  # [s]
 SIGNAL_LENGTH = 300  # [s]

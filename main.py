@@ -1,10 +1,10 @@
 import wfdb
 from scipy.signal import savgol_filter
 
-from preprocessing import ECGPreprocessor
-from plot import plot_signal
+from data_processing import ECGPreprocessor
+from tools.plot import plot_signal
 
-DB_PATH = 'fantasia_wfdb\\f1o01'
+DB_PATH = 'data\\fantasia_wfdb\\f1o01'
 ecg_preprocessor = ECGPreprocessor(DB_PATH)
 fs = ecg_preprocessor.record.fs
 

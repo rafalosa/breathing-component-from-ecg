@@ -1,6 +1,5 @@
 from sklearn.decomposition import PCA
-from preprocessing import ECGPreprocessor
-from postprocessing import EDRPicker
+from data_processing import ECGPreprocessor, EDRPicker
 from scipy.signal import savgol_filter, coherence, correlate
 import wfdb
 import numpy as np
@@ -10,7 +9,7 @@ SAMPLING_FREQ = 250
 START_IDX = 2251 * SAMPLING_FREQ
 SIGNAL_LEN = 5*SAMPLING_FREQ*60
 
-DB_PATH = 'fantasia_wfdb\\f1o01'
+DB_PATH = 'data\\fantasia_wfdb\\f1o01'
 ecg_preprocessor = ECGPreprocessor(DB_PATH)
 ecg_preprocessor.ecg_signal = savgol_filter(ecg_preprocessor.ecg_signal, window_length=7, polyorder=3)
 peaks = ecg_preprocessor.create_qrs_matrix(qrs_time_window=0.12)

@@ -1,11 +1,12 @@
-import numpy as np
-from scipy.signal import welch
-from scipy.interpolate import splev, splrep
-from scipy.integrate import simps
 from typing import Tuple, List, Optional
-import wfdb.io
+
 import matplotlib.pyplot as plt
+import numpy as np
+import wfdb.io
+from scipy.integrate import simps
+from scipy.interpolate import splev, splrep
 from scipy.signal import savgol_filter
+from scipy.signal import welch
 
 
 class EDRPicker:
@@ -64,7 +65,7 @@ class EDRPicker:
                                " method before getting the candidates' spectra.")
         return self._power_spectra
 
-    def apply(self, candidates: np.ndarray, timestamps: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def apply(self, candidates: np.ndarray, timestamps: np.ndarray, sort_: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Apply spline interpolation/approximation and spectral analysis to a EDR candidates matrix and return processed
         results.
@@ -121,14 +122,16 @@ class EDRPicker:
             derived_respiration_signals.append(interpolated_edr)
 
         # Sort EDR candidates with ascending order with respect to the fractions
-        zipped_results = zip(fractions, derived_respiration_signals, self._power_spectra)
-        sorted_results = sorted(zipped_results, reverse=False, key=lambda x: x[0])
 
-        sorted_fractions = np.array([el[0] for el in sorted_results])
-        sorted_edr = np.array([el[1] for el in sorted_results])
-        self._power_spectra = [el[2] for el in sorted_results]
+        if sort_:
+            zipped_results = zip(fractions, derived_respiration_signals, self._power_spectra)
+            zipped_results = sorted(zipped_results, reverse=False, key=lambda x: x[0])
 
-        return sorted_fractions, sorted_edr
+            fractions = np.array([el[0] for el in zipped_results])
+            derived_respiration_signals = np.array([el[1] for el in zipped_results])
+            self._power_spectra = [el[2] for el in zipped_results]
+
+        return fractions, derived_respiration_signals
 
 
 if __name__ == "__main__":
