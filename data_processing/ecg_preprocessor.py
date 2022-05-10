@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Callable
 
 import numpy as np
 import wfdb
@@ -6,7 +6,10 @@ from wfdb import processing
 
 
 class ECGPreprocessor:
-    def __init__(self, signal_path: str, start: Optional[float] = None, end: Optional[float] = None):
+    def __init__(self, signal_path: str, start: Optional[float] = None,
+                 end: Optional[float] = None,
+                 filter_: Optional[Callable] = None):
+
         self._signal_path = signal_path
         self.record = wfdb.rdrecord(signal_path)
         self._ecg_signal = self.record.p_signal[:, 1]
@@ -14,6 +17,7 @@ class ECGPreprocessor:
         self.start_time: Optional[float] = start
         self.end_time: Optional[float] = end
         self.signal_length: Optional[float] = None
+        self.filter = filter_
 
         if self.start_time is not None and self.end_time is not None:
             self.signal_length = self.end_time - self.start_time
@@ -25,7 +29,12 @@ class ECGPreprocessor:
 
             start_idx = self.start_time * self.record.fs
             end_idx = self.end_time * self.record.fs
-            return self._ecg_signal[start_idx:end_idx]
+            signal = self._ecg_signal[start_idx:end_idx]
+
+            if self.filter is not None:
+                signal = self.filter(signal)
+
+            return signal
 
         return self._ecg_signal
 
@@ -64,7 +73,8 @@ class ECGPreprocessor:
 
         return indexes
 
-    def create_qrs_matrix(self, qrs_time_window: float, data_centering: bool = True) -> np.ndarray:
+    def create_qrs_matrix(self, qrs_time_window: float,
+                          data_centering: bool = True) -> np.ndarray:
         """
         Creates matrix with separated QRS complexes and enables optional signal preprocessing
 
@@ -73,7 +83,7 @@ class ECGPreprocessor:
         :return: Multivariate matrix of indexes where each column corresponds to R peak
         """
         frequency = self.record.fs
-        signal = self._ecg_signal
+        signal = self.filter(self._ecg_signal) if self.filter is not None else self._ecg_signal
 
         indexes = self.get_r_peaks_indexes(cropped=False)
         max_window_width = min([y - x for x, y in zip(indexes, indexes[1:])])
