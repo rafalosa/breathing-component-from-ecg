@@ -13,34 +13,26 @@ SAMPLING_FREQ = 250  # [Hz]
 start_idx = START_TIME * SAMPLING_FREQ
 end_idx = (START_TIME + SIGNAL_LENGTH) * SAMPLING_FREQ
 
-extractor = ECGPreprocessor("data/fantasia_wfdb/f1o01")
+extractor = ECGPreprocessor("data/fantasia_wfdb/f1o01", START_TIME, START_TIME + SIGNAL_LENGTH)
 
-r_idxs = extractor.get_r_peaks_indexes()
+r_timestamps = extractor.get_r_peaks_indexes()/SAMPLING_FREQ
 ecg_signal = extractor.ecg_signal
-qrs_complexes_all = extractor.create_qrs_matrix(.12)
+qrs_complexes = extractor.create_qrs_matrix(.12)
 resp_signal = extractor.respiration_signal
-resp_signal_cropped = resp_signal[start_idx:end_idx]
-
-slicer_temp1 = np.r_[r_idxs > start_idx]
-slicer_temp2 = np.r_[r_idxs < end_idx]
-slicer = [condA and condB for condA, condB in zip(slicer_temp1, slicer_temp2)]
-
-r_timestamps_cropped = r_idxs[slicer] / 250
-qrs_complexes_cropped = qrs_complexes_all[:, slicer]
 
 pca = PCA(n_components=6, whiten=True, random_state=123)
-pca.fit(qrs_complexes_cropped)
+pca.fit(qrs_complexes)
 reduced_dim_data = pca.components_
 
 ica = FastICA(max_iter=160, tol=.1, random_state=123)
 components = ica.fit_transform(reduced_dim_data.T)
 
-picker = EDRPicker((r_timestamps_cropped[0], r_timestamps_cropped[-1]))
+picker = EDRPicker((r_timestamps[0], r_timestamps[-1]))
 picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
 picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
-fractions, edrs = picker.apply(components.T, r_timestamps_cropped)
-edr_domain = np.arange(r_timestamps_cropped[0], r_timestamps_cropped[-1], 1/SAMPLING_FREQ)
+fractions, edrs = picker.apply(components.T, r_timestamps, crop_to_freq=.6)
+edr_domain = np.arange(r_timestamps[0], r_timestamps[-1], 1/SAMPLING_FREQ)
 
 fig = plt.figure(figsize=(10, 5))
 
@@ -50,16 +42,12 @@ fig.add_subplot(3, 1, 1)
 plt.plot(edrs[EDR_IDX][:(SIGNAL_LENGTH*250)//3]*-1)
 
 fig.add_subplot(3, 1, 2)
-plt.plot(savgol_filter(resp_signal_cropped[:(SIGNAL_LENGTH*250)//3], 100, 1))
+plt.plot(savgol_filter(resp_signal[:(SIGNAL_LENGTH*250)//3], 100, 1))
 
 fig.add_subplot(3, 1, 3)
 domain = picker.power_spectra[EDR_IDX][0]
-cropper1 = np.r_[domain >= 0]
-cropper2 = np.r_[domain <= .6]
-cropper = [a and b for a, b in zip(cropper1, cropper2)]
-cropped_domain = domain[cropper]
-cropped_spectrum = picker.power_spectra[EDR_IDX][1][cropper]
-plt.plot(cropped_domain, cropped_spectrum)
+spectrum = picker.power_spectra[EDR_IDX][1]
+plt.plot(domain, spectrum)
 
 plt.show()
 

@@ -65,13 +65,18 @@ class EDRPicker:
                                " method before getting the candidates' spectra.")
         return self._power_spectra
 
-    def apply(self, candidates: np.ndarray, timestamps: np.ndarray, sort_: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+    def apply(self, candidates: np.ndarray,
+              timestamps: np.ndarray,
+              sort_: bool = True,
+              crop_to_freq: Optional[float] = None) -> Tuple[np.ndarray, np.ndarray]:
         """
         Apply spline interpolation/approximation and spectral analysis to a EDR candidates matrix and return processed
         results.
         :param candidates: Matrix of EDR candidates, each candidate occupies an entire row.
         :param timestamps: Markers in seconds of the extracted R peaks. Used to properly reconstruct the timeline of the
         EDR signal.
+        :param sort_: Sort the EDR candidates in order of best to worst fitting for a respiratory signal.
+        :param crop_to_freq: Frequency to which the power spectra and their domains will be cropped.
         :return: Tuple of Interpolated EDR candidates sorted from best to worst and their associated spectral power
         fractions.
         """
@@ -92,7 +97,17 @@ class EDRPicker:
                                                       nperseg=self._samples_per_segment,
                                                       nfft=self._nfft)
 
-            self._power_spectra.append((edr_spectrum_domain, edr_spectrum))
+            if crop_to_freq is not None:
+                # todo: Improve
+                cropper1 = np.r_[edr_spectrum_domain >= 0]
+                cropper2 = np.r_[edr_spectrum_domain <= crop_to_freq]
+                cropper = [cond1 and cond2 for cond1, cond2 in zip(cropper1, cropper2)]
+                cropped_edr_domain = edr_spectrum_domain[cropper]
+                cropped_edr_spectrum = edr_spectrum[cropper]
+                self._power_spectra.append((cropped_edr_domain, cropped_edr_spectrum))
+
+            else:
+                self._power_spectra.append((edr_spectrum_domain, edr_spectrum))
 
             window_width_index = self._spectral_power_window / self._sampling_frequency * 2 * edr_spectrum.shape[0]
 

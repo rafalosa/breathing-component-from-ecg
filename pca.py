@@ -10,39 +10,26 @@ START_TIME = 2651  # [s]
 SIGNAL_LENGTH = 300  # [s]
 SAMPLING_FREQ = 250  # [Hz]
 
-start_idx = START_TIME * SAMPLING_FREQ
-end_idx = (START_TIME + SIGNAL_LENGTH) * SAMPLING_FREQ
+DB_PATH = 'data/fantasia_wfdb/f1o01'
 
-DB_PATH = 'data\\fantasia_wfdb\\f1o01'
+ecg_preprocessor = ECGPreprocessor(DB_PATH, START_TIME, START_TIME + SIGNAL_LENGTH)
 
-ecg_preprocessor = ECGPreprocessor(DB_PATH)
-ecg_preprocessor.ecg_signal = savgol_filter(ecg_preprocessor.ecg_signal, window_length=7, polyorder=3)
-
-r_idxs = ecg_preprocessor.get_r_peaks_indexes()
-ecg_signal = ecg_preprocessor.ecg_signal
-qrs_complexes_all = ecg_preprocessor.create_qrs_matrix(qrs_time_window=0.12)
+r_timestamps = ecg_preprocessor.get_r_peaks_indexes() / SAMPLING_FREQ
+ecg_signal = savgol_filter(ecg_preprocessor.ecg_signal, window_length=7, polyorder=3)
+qrs_complexes = ecg_preprocessor.create_qrs_matrix(qrs_time_window=0.12)
 resp_signal = ecg_preprocessor.respiration_signal
-resp_signal_cropped = resp_signal[start_idx:end_idx]
-
-
-slicer_temp1 = np.r_[r_idxs > start_idx]
-slicer_temp2 = np.r_[r_idxs < end_idx]
-slicer = [condA and condB for condA, condB in zip(slicer_temp1, slicer_temp2)]
-
-r_timestamps_cropped = r_idxs[slicer] / 250
-qrs_complexes_cropped = qrs_complexes_all[:, slicer]
 
 pca = PCA()
-pca.fit(qrs_complexes_cropped)
+pca.fit(qrs_complexes)
 
 eigen_vectors = pca.components_
 
-picker = EDRPicker((r_timestamps_cropped[0], r_timestamps_cropped[-1]))
+picker = EDRPicker((r_timestamps[0], r_timestamps[-1]))
 picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
 picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
-fractions, edrs = picker.apply(eigen_vectors, r_timestamps_cropped, sort_=True)
-edr_domain = np.arange(r_timestamps_cropped[0], r_timestamps_cropped[-1], 1/SAMPLING_FREQ)
+fractions, edrs = picker.apply(eigen_vectors, r_timestamps, sort_=True)
+edr_domain = np.arange(r_timestamps[0], r_timestamps[-1], 1/SAMPLING_FREQ)
 
 EDR_IDX = 0
 

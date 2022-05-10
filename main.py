@@ -4,7 +4,7 @@ from scipy.signal import savgol_filter
 from data_processing import ECGPreprocessor
 from tools.plot import plot_signal
 
-DB_PATH = 'data\\fantasia_wfdb\\f1o01'
+DB_PATH = 'data/fantasia_wfdb/f1o01'
 ecg_preprocessor = ECGPreprocessor(DB_PATH)
 fs = ecg_preprocessor.record.fs
 signal_range = 2000
