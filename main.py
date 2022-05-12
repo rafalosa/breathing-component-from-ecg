@@ -25,7 +25,7 @@ extractor = EDRExtractor(qrs_matrix)
 
 pca_edr = extractor.pca()
 
-ica_edr = extractor.ica(max_iter=160, tol=.1, random_state=123)
+ica_edr = extractor.ica(reduce_dim=6, max_iter=160, tol=.1)
 
 picker = EDRPicker((first_qrs, last_qrs))
 picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
