@@ -18,3 +18,4 @@ six==1.16.0
 urllib3==1.26.8
 wfdb==3.4.1
 scikit-learn==1.0.2
+statsmodels==0.13.2

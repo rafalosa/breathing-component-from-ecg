@@ -3,10 +3,10 @@ import numpy as np
 
 from data_processing import ECGPreprocessor, EDRExtractor, EDRPicker
 from tools.plot import CollectivePlotter
+from tools.signal_testing import coherence, cross_correlation
 
 START_TIME = 2251  # [s]
 SIGNAL_LENGTH = 300  # [s]
-SAMPLING_FREQ = 250  # [Hz]
 RANDOM_STATE = 69
 
 DB_PATH = 'data/fantasia_wfdb/f1o01'
@@ -15,6 +15,7 @@ ecg_preprocessor = ECGPreprocessor(DB_PATH,
                                    START_TIME+SIGNAL_LENGTH,
                                    lambda x: savgol_filter(x, window_length=7, polyorder=3))
 
+SAMPLING_FREQ = ecg_preprocessor.record.fs  # [Hz]
 r_timestamps = ecg_preprocessor.get_r_peaks_indexes()/SAMPLING_FREQ
 
 first_qrs = r_timestamps[0]
@@ -50,3 +51,18 @@ pl.set_col_xlabel(0, "Time (s)")
 pl.set_col_xlabel(1, "Time (s)")
 
 pl.show()
+
+# Test section
+edr_pca_to_test = edr_pca[0]
+edr_ica_to_test = edr_ica[0]
+edr_length = len(edr_pca_to_test)
+resp_signal = ecg_preprocessor.respiration_signal[:edr_length]
+
+pca_cross_corr = cross_correlation(resp_signal, edr_pca_to_test, adjusted=True)
+ica_cross_corr = cross_correlation(resp_signal, edr_ica_to_test, adjusted=True)
+
+pca_coherence = coherence(resp_signal, edr_pca_to_test, fs=SAMPLING_FREQ, window_type='hamming', n=2**13, nfft=2**16)
+ica_coherence = coherence(resp_signal, edr_ica_to_test, fs=SAMPLING_FREQ, window_type='hamming', n=2**13, nfft=2**16)
+
+print(f'PCA cross correlation and coherence results: {pca_cross_corr:.2f}, {pca_coherence:.2f}')
+print(f'ICA cross correlation and coherence results: {ica_cross_corr:.2f}, {ica_coherence:.2f}')

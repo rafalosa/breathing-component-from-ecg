@@ -42,7 +42,7 @@ class EDRExtractor:
         data = data.T
 
         ica = FastICA(*args, **kwargs)
-        return ica.fit_transform(data)
+        return ica.fit_transform(data)*-1
 
     def pca(self, *args, **kwargs) -> np.ndarray:
 
