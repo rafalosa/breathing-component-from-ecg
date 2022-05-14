@@ -68,13 +68,14 @@ class EDRPicker:
 
     @property
     def power_spectra(self) -> List[Tuple[np.ndarray, np.ndarray]]:
-        try:
-            assert self._power_spectra
-        except AssertionError:
+
+        if not self._power_spectra:
             raise RuntimeError("Perform the spectral analysis using the apply()"
                                " method before getting the candidates' spectra.")
-
-        return self._power_spectra
+        if self._cropped:
+            return self._power_spectra_cropped
+        else:
+            return self._power_spectra
 
     def apply(self, candidates: np.ndarray,
               timestamps: np.ndarray,
@@ -145,7 +146,6 @@ class EDRPicker:
             max_index = np.argmax(edr_spectrum)  # Locate global maximum
 
             # Place window at global maximum with window_width
-
             left_bracket = int(max_index - window_width_index // 2)
             right_bracket = int(max_index + window_width_index // 2 + 1)
 
@@ -195,8 +195,8 @@ class EDRPicker:
             edr_spectrum_inside = edr_spectrum[inside_range]
             edr_spectrum_domain_inside = edr_spectrum_domain[inside_range]
 
-            spectral_penalties.append(np.abs(1 / simps(edr_spectrum_inside, edr_spectrum_domain_inside)))
-            distance_penalties.append(10 * np.abs(self._freq_suggest - max_freq))
+            spectral_penalties.append(simps(edr_spectrum_inside, edr_spectrum_domain_inside))
+            distance_penalties.append(np.abs(self._freq_suggest - max_freq))
 
         distance_penalties = np.array(distance_penalties)
         spectral_penalties = np.array(spectral_penalties)
@@ -220,59 +220,19 @@ class EDRPicker:
     def _sort_candidates_and_spectra(self, sort_args: List[float], edrs: List[np.ndarray], reverse: bool):
 
         zipped_results = zip(sort_args, edrs, self._power_spectra)
-        zipped_results = sorted(zipped_results, reverse=reverse, key=lambda x: x[0])
 
+        if self._cropped:
+            zipped_results = zip(sort_args, edrs, self._power_spectra, self._power_spectra_cropped)
+
+        zipped_results = sorted(zipped_results, reverse=reverse, key=lambda x: x[0])
+        arg = np.array([el[1] for el in zipped_results])
         derived_respiration_signals = np.array([el[1] for el in zipped_results])
         self._power_spectra = [el[2] for el in zipped_results]
+        if self._cropped:
+            self._power_spectra_cropped = [el[3] for el in zipped_results]
 
         return derived_respiration_signals
 
 
 if __name__ == "__main__":
-    ann = wfdb.io.rdann("../fantasia_wfdb/f1y05", "ecg")
-    data = wfdb.io.rdrecord("../fantasia_wfdb/f1y05")
-
-    respiration = data.p_signal[:, 0]
-    idxs = ann.sample
-
-    pt_len = 100
-    start = 700
-
-    chosen = idxs[start:start + pt_len]
-    chosen_time = np.array(chosen) * 1 / 250
-
-    respiration_chosen_raw = np.array(respiration[chosen])
-
-    fig = plt.figure(figsize=(16, 10))
-
-    fig.add_subplot(3, 1, 1)
-    plt.plot(chosen_time, respiration_chosen_raw)
-    plt.title("Simulated EDR candidate")
-
-    edr_picker = EDRPicker((chosen_time[0], chosen_time[-1]))
-    try:
-        a = edr_picker.power_spectra
-    except RuntimeError:
-        pass
-    edr_picker.set_spectral_params(.08, 2 ** 13, 2 ** 16)
-    edr_picker.set_spline_params(0.1, 0, 250)
-
-    frac, edr = edr_picker.apply(np.array([respiration_chosen_raw]), chosen_time)
-
-    fig.add_subplot(3, 1, 2)
-    plt.plot(np.linspace(chosen_time[0], chosen_time[-1], edr[0].shape[0]), edr[0])
-    plt.title("Interpolated EDR candidate")
-
-    fig.add_subplot(3, 1, 3)
-    respiration_filtered = savgol_filter(respiration[chosen[0]:chosen[-1]], 100, 1)
-    plt.plot(np.linspace(chosen_time[0], chosen_time[-1], respiration_filtered.shape[0]), respiration_filtered)
-    plt.title("Filtered reference")
-    plt.xlabel("Time (s)")
-
-    s = edr_picker.power_spectra
-
-    fig = plt.figure()
-    fig.add_subplot(1, 1, 1)
-    plt.plot(s[0][1])
-
-    plt.show()
+    pass
