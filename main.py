@@ -30,25 +30,40 @@ pca_edr = extractor.pca(random_state=RANDOM_STATE)
 ica_edr = extractor.ica(reduce_dim=6, max_iter=160, tol=.1, random_state=RANDOM_STATE)
 
 picker = EDRPicker((first_qrs, last_qrs))
-picker.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
-picker.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
+picker.set_spline_params(smoothing=0.1, derivative=0, sampling_frequency=SAMPLING_FREQ)
+picker.set_spectral_params(window_width=.04, samples_per_segment=2**13, nfft_=2**16)
+
+picker2 = EDRPicker((first_qrs, last_qrs))
+picker2.set_spline_params(smoothing=0, derivative=0, sampling_frequency=SAMPLING_FREQ)
+picker2.set_spectral_params(window_width=.08, samples_per_segment=2**13, nfft_=2**16)
 
 edr_ica = picker.apply(ica_edr.T, r_timestamps, method="sugpen", crop_to_freq=.6)
-edr_pca = picker.apply(pca_edr, r_timestamps, method="sugpen", crop_to_freq=.6)
+ica_spectra = picker.power_spectra
 
-pl = CollectivePlotter(6, 2)
+edr_pca = picker2.apply(pca_edr, r_timestamps, method="sugpen", crop_to_freq=.6)
+pca_spectra = picker2.power_spectra
+
+pl = CollectivePlotter(6, 4)
 
 edr_domain = np.arange(r_timestamps[0], r_timestamps[-1], 1/SAMPLING_FREQ)
 
 pl.set_col_values(0, edr_ica[:6])
-pl.set_col_values(1, edr_pca[:6])
+pl.set_col_values(2, edr_pca[:6])
+pl.set_col_values(1, [values[1] for values in ica_spectra[:6]])
+pl.set_col_values(3, [values[1] for values in pca_spectra[:6]])
+
 pl.set_col_domain(0, edr_domain)
-pl.set_col_domain(1, edr_domain)
-pl.set_col_boundaries(1, (START_TIME, START_TIME + 100))
+pl.set_col_domain(2, edr_domain)
+pl.set_col_domain(1, ica_spectra[0][0])
+pl.set_col_domain(3, pca_spectra[0][0])
+
 pl.set_col_boundaries(0, (START_TIME, START_TIME + 100))
+pl.set_col_boundaries(2, (START_TIME, START_TIME + 100))
 
 pl.set_col_xlabel(0, "Time (s)")
-pl.set_col_xlabel(1, "Time (s)")
+pl.set_col_xlabel(1, "Frequency (Hz)")
+pl.set_col_xlabel(2, "Time (s)")
+pl.set_col_xlabel(3, "Frequency (Hz)")
 
 pl.show()
 
