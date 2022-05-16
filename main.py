@@ -69,19 +69,22 @@ pl.set_col_xlabel(3, "Frequency (Hz)")
 pl.show()
 
 # Test section
-edr_pca_to_test = edr_pca[0]
-edr_ica_to_test = edr_ica[0]
-edr_length = len(edr_pca_to_test)
-resp_signal = ecg_preprocessor.respiration_signal[:edr_length]
+for i in range(3):
+    edr_pca_to_test = edr_pca[i]
+    edr_ica_to_test = edr_ica[i]
+    edr_length = len(edr_pca_to_test)
+    resp_signal = savgol_filter(ecg_preprocessor.respiration_signal, 150, 2)[:edr_length]
 
-pca_cross_corr = cross_correlation(resp_signal, edr_pca_to_test, adjusted=True)
-ica_cross_corr = cross_correlation(resp_signal, edr_ica_to_test, adjusted=True)
+    pca_cross_corr = cross_correlation(resp_signal, edr_pca_to_test, adjusted=False)
+    ica_cross_corr = cross_correlation(resp_signal, edr_ica_to_test, adjusted=False)
 
-pca_coherence = coherence(resp_signal, edr_pca_to_test, fs=SAMPLING_FREQ, window_type='hamming', n=2**13, nfft=2**16)
-ica_coherence = coherence(resp_signal, edr_ica_to_test, fs=SAMPLING_FREQ, window_type='hamming', n=2**13, nfft=2**16)
+    pca_coherence = coherence(resp_signal, edr_pca_to_test, fs=SAMPLING_FREQ, window_type='hamming',
+                              samples_per_segment=2 ** 13, nfft=2 ** 16)
+    ica_coherence = coherence(resp_signal, edr_ica_to_test, fs=SAMPLING_FREQ, window_type='hamming',
+                              samples_per_segment=2 ** 13, nfft=2 ** 16)
 
-print(f'PCA cross correlation and coherence results: {pca_cross_corr:.2f}, {pca_coherence:.2f}')
-print(f'ICA cross correlation and coherence results: {ica_cross_corr:.2f}, {ica_coherence:.2f}')
+    print(f'{i + 1} - PCA cross correlation and coherence results: {pca_cross_corr:.2f}, {pca_coherence:.2f}')
+    print(f'{i + 1} - ICA cross correlation and coherence results: {ica_cross_corr:.2f}, {ica_coherence:.2f}')
 
 pl2 = CollectivePlotter(1, 2)
 

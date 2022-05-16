@@ -17,8 +17,8 @@ def cross_correlation(x: np.ndarray, y: np.ndarray, adjusted: bool = True) -> fl
     return max(ccf(x, y, adjusted=adjusted))
 
 
-def coherence(x: np.ndarray, y: np.ndarray, fs: float, window_type: Optional[str] = 'hann', n: Optional[int] = None,
-              nfft: Optional[int] = None) -> float:
+def coherence(x: np.ndarray, y: np.ndarray, fs: float, window_type: Optional[str] = 'hamming',
+              samples_per_segment: Optional[int] = None, nfft: Optional[int] = None) -> float:
     """
     Calcalate the maximum of magnitude squared coherence modulus
 
@@ -26,13 +26,13 @@ def coherence(x: np.ndarray, y: np.ndarray, fs: float, window_type: Optional[str
     :param y: Signal Y
     :param fs: Sampling frequency of the x and y time series
     :param window_type: The type of window to create
-    :param n: The number of samples in the window
+    :param samples_per_segment: The number of samples in the window
     :param nfft: Length of the FFT used
     :return: Coherence
     """
-    if n is not None:
-        _, pca_coherence = signal.coherence(x, y, fs=fs, window=signal.get_window(window_type, n), nfft=nfft)
+    if samples_per_segment is not None:
+        _, pca_coherence = signal.coherence(x, y, fs=fs, window=window_type, nperseg=samples_per_segment, nfft=nfft)
     else:
-        _, pca_coherence = signal.coherence(x, y, fs=fs, window=window_type, nfft=nfft)
+        _, pca_coherence = signal.coherence(x, y, fs=fs, window=window_type, nperseg=samples_per_segment, nfft=nfft)
 
     return max(pca_coherence)

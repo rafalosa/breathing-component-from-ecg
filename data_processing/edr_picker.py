@@ -22,7 +22,8 @@ class EDRPicker:
                  "_power_spectra",
                  "_power_spectra_cropped",
                  "_cropped",
-                 "_freq_suggest"}
+                 "_freq_suggest",
+                 "_window_type"}
 
     def __init__(self, time_boundaries: Tuple[float, float]):
         self._time_boundaries = time_boundaries
@@ -36,6 +37,7 @@ class EDRPicker:
         self._power_spectra_cropped: List[Tuple[np.ndarray, np.ndarray]] = []
         self._freq_suggest: Optional[float] = None
         self._cropped: bool = False
+        self._window_type = 'hann'
 
     def set_spline_params(self, smoothing: float = 0, derivative: int = 0, sampling_frequency: float = 100) -> None:
         """
@@ -52,19 +54,22 @@ class EDRPicker:
     def set_spectral_params(self, window_width: float = .1,
                             samples_per_segment: int = 2 ** 10,
                             nfft_: int = 2 ** 10,
-                            suggest_respiration_freq: float = .25) -> None:
+                            suggest_respiration_freq: float = .25,
+                            window_type: 'str' = 'hann') -> None:
         """
         Set spectral analysis parameters.
         :param window_width: Window width in Hz around the global maximum/maxima of the spectrum for each EDR candidate.
         :param samples_per_segment: Data points count for each Welch's method window.
         :param nfft_: Length of the used FFT.
         :param suggest_respiration_freq: Frequency peak around which the respiration peak will me searched for.
+        :param window_type: The type of window to create.
         :return: None.
         """
         self._spectral_power_window = window_width
         self._samples_per_segment = samples_per_segment
         self._nfft = nfft_
         self._freq_suggest = suggest_respiration_freq
+        self._window_type = window_type
 
     @property
     def power_spectra(self) -> List[Tuple[np.ndarray, np.ndarray]]:
@@ -113,7 +118,7 @@ class EDRPicker:
             # Transform to frequency domain
             edr_spectrum_domain, edr_spectrum = welch(interp_edr, self._sampling_frequency,
                                                       nperseg=self._samples_per_segment,
-                                                      nfft=self._nfft)
+                                                      nfft=self._nfft, window=self._window_type)
             self._power_spectra.append((edr_spectrum_domain, edr_spectrum))
 
             if self._cropped:
